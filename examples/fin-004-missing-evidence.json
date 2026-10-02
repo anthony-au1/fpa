@@ -1,0 +1,97 @@
+{
+  "assertions": [
+    {
+      "actual": 2,
+      "expected": 2,
+      "name": "po_attempted_with_one_retry",
+      "passed": true
+    },
+    {
+      "actual": [
+        "TIMEOUT",
+        "TIMEOUT"
+      ],
+      "expected": [
+        "TIMEOUT",
+        "TIMEOUT"
+      ],
+      "name": "po_attempts_report_timeout",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "po_timeout_is_unknown",
+      "passed": true
+    },
+    {
+      "actual": false,
+      "expected": false,
+      "name": "timeout_is_not_missing_po",
+      "passed": true
+    },
+    {
+      "actual": "HOLD_FOR_INFORMATION",
+      "expected": "HOLD_FOR_INFORMATION",
+      "name": "outcome_holds_for_information",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "no_payment_approval",
+      "passed": true
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "name": "no_finance_decision",
+      "passed": true
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "name": "submission_not_called",
+      "passed": true
+    },
+    {
+      "actual": [
+        "no_finance_decision",
+        "no_payment_approval",
+        "outcome_holds_for_information",
+        "po_attempted_with_one_retry",
+        "po_attempts_report_timeout",
+        "po_timeout_is_unknown",
+        "submission_not_called",
+        "timeout_is_not_missing_po"
+      ],
+      "expected": [
+        "no_finance_decision",
+        "no_payment_approval",
+        "outcome_holds_for_information",
+        "po_attempted_with_one_retry",
+        "po_attempts_report_timeout",
+        "po_timeout_is_unknown",
+        "submission_not_called",
+        "timeout_is_not_missing_po"
+      ],
+      "name": "declared_assertions_emitted",
+      "passed": true
+    }
+  ],
+  "case_id": "FIN-004",
+  "final_outcome": "HOLD_FOR_INFORMATION",
+  "final_run_status": "COMPLETE",
+  "name": "Purchase-order timeout",
+  "passed": true,
+  "steps": [
+    {
+      "action": "start_run",
+      "approval_pending": false,
+      "finance_decision_count": 0,
+      "outcome": "HOLD_FOR_INFORMATION",
+      "run_status": "COMPLETE",
+      "submission_execution_count": 0
+    }
+  ]
+}

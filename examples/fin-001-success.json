@@ -1,0 +1,139 @@
+{
+  "assertions": [
+    {
+      "actual": "WAITING_FOR_APPROVAL",
+      "expected": "WAITING_FOR_APPROVAL",
+      "name": "initial_status_waiting_for_approval",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "no_decision_before_approval",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "deterministic_controls_eligible",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "approval_context_sanitized",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "required_authority_identified",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "approval_has_citations",
+      "passed": true
+    },
+    {
+      "actual": "COMPLETE",
+      "expected": "COMPLETE",
+      "name": "same_run_completed",
+      "passed": true
+    },
+    {
+      "actual": 1,
+      "expected": 1,
+      "name": "one_finance_decision",
+      "passed": true
+    },
+    {
+      "actual": 1,
+      "expected": 1,
+      "name": "submission_exactly_once",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "audit_milestones_present",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "policy_evidence_retrieved",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "model_citations_were_retrieved",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "current_authority_present",
+      "passed": true
+    },
+    {
+      "actual": [
+        "approval_context_sanitized",
+        "approval_has_citations",
+        "audit_milestones_present",
+        "current_authority_present",
+        "deterministic_controls_eligible",
+        "initial_status_waiting_for_approval",
+        "model_citations_were_retrieved",
+        "no_decision_before_approval",
+        "one_finance_decision",
+        "policy_evidence_retrieved",
+        "required_authority_identified",
+        "same_run_completed",
+        "submission_exactly_once"
+      ],
+      "expected": [
+        "approval_context_sanitized",
+        "approval_has_citations",
+        "audit_milestones_present",
+        "current_authority_present",
+        "deterministic_controls_eligible",
+        "initial_status_waiting_for_approval",
+        "model_citations_were_retrieved",
+        "no_decision_before_approval",
+        "one_finance_decision",
+        "policy_evidence_retrieved",
+        "required_authority_identified",
+        "same_run_completed",
+        "submission_exactly_once"
+      ],
+      "name": "declared_assertions_emitted",
+      "passed": true
+    }
+  ],
+  "case_id": "FIN-001",
+  "final_outcome": "APPROVE_FOR_POSTING",
+  "final_run_status": "COMPLETE",
+  "name": "Valid three-way match",
+  "passed": true,
+  "steps": [
+    {
+      "action": "start_run",
+      "approval_pending": true,
+      "finance_decision_count": 0,
+      "outcome": "APPROVE_FOR_POSTING",
+      "run_status": "WAITING_FOR_APPROVAL",
+      "submission_execution_count": 0
+    },
+    {
+      "action": "approval_callback_1",
+      "approval_pending": false,
+      "finance_decision_count": 1,
+      "outcome": "APPROVE_FOR_POSTING",
+      "run_status": "COMPLETE",
+      "submission_execution_count": 1
+    }
+  ]
+}

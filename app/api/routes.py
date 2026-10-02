@@ -8,9 +8,9 @@ from app.api.schemas import (
     ApprovalRequestBody,
     CreateRunRequest,
     EvaluationListResponse,
-    Problem,
     RunResponse,
 )
+from app.evaluation.models import EvaluationCaseSummary, EvaluationSuiteResult
 from app.persistence.repositories import RunRepository
 from app.services.approvers import ApproverDenied
 from app.services.workflow import ApprovalConflict, RunNotWaiting, WorkflowRunService
@@ -84,13 +84,21 @@ async def resolve_approval(
 
 
 @router.get("/evaluations", response_model=EvaluationListResponse)
-def list_evaluations() -> EvaluationListResponse:
-    return EvaluationListResponse()
-
-
-@router.post("/evaluations/run", response_model=Problem, status_code=501)
-def run_evaluations() -> Problem:
-    raise HTTPException(
-        status_code=501,
-        detail="FIN evaluation packaging is intentionally deferred to Task 5",
+def list_evaluations(request: Request) -> EvaluationListResponse:
+    cases = request.app.state.evaluation_runner.cases()
+    return EvaluationListResponse(
+        total=len(cases),
+        evaluations=[
+            EvaluationCaseSummary(
+                case_id=case.case_id,
+                name=case.name,
+                description=case.description,
+            )
+            for case in cases
+        ],
     )
+
+
+@router.post("/evaluations/run", response_model=EvaluationSuiteResult)
+async def run_evaluations(request: Request) -> EvaluationSuiteResult:
+    return await request.app.state.evaluation_runner.run_suite()

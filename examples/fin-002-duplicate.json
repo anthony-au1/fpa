@@ -1,0 +1,103 @@
+{
+  "assertions": [
+    {
+      "actual": "COMPLETE",
+      "expected": "COMPLETE",
+      "name": "terminal_status",
+      "passed": true
+    },
+    {
+      "actual": "REJECT_DUPLICATE",
+      "expected": "REJECT_DUPLICATE",
+      "name": "outcome_reject_duplicate",
+      "passed": true
+    },
+    {
+      "actual": [
+        "HIST-PAID-001"
+      ],
+      "expected": [
+        "HIST-PAID-001"
+      ],
+      "name": "stable_duplicate_record_exposed",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "no_payment_approval",
+      "passed": true
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "name": "no_finance_decision",
+      "passed": true
+    },
+    {
+      "actual": 0,
+      "expected": 0,
+      "name": "submission_not_called",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "policy_evidence_retrieved",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "model_citations_were_retrieved",
+      "passed": true
+    },
+    {
+      "actual": true,
+      "expected": true,
+      "name": "current_authority_present",
+      "passed": true
+    },
+    {
+      "actual": [
+        "current_authority_present",
+        "model_citations_were_retrieved",
+        "no_finance_decision",
+        "no_payment_approval",
+        "outcome_reject_duplicate",
+        "policy_evidence_retrieved",
+        "stable_duplicate_record_exposed",
+        "submission_not_called",
+        "terminal_status"
+      ],
+      "expected": [
+        "current_authority_present",
+        "model_citations_were_retrieved",
+        "no_finance_decision",
+        "no_payment_approval",
+        "outcome_reject_duplicate",
+        "policy_evidence_retrieved",
+        "stable_duplicate_record_exposed",
+        "submission_not_called",
+        "terminal_status"
+      ],
+      "name": "declared_assertions_emitted",
+      "passed": true
+    }
+  ],
+  "case_id": "FIN-002",
+  "final_outcome": "REJECT_DUPLICATE",
+  "final_run_status": "COMPLETE",
+  "name": "Exact duplicate invoice",
+  "passed": true,
+  "steps": [
+    {
+      "action": "start_run",
+      "approval_pending": false,
+      "finance_decision_count": 0,
+      "outcome": "REJECT_DUPLICATE",
+      "run_status": "COMPLETE",
+      "submission_execution_count": 0
+    }
+  ]
+}

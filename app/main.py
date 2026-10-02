@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.agent.graph import WorkflowDependencies
 from app.api import routes
 from app.config import Settings, get_settings
+from app.evaluation.runner import EvaluationRunner
 from app.llm.provider import ModelProvider, create_model_provider
 from app.persistence import tables
 from app.persistence.database import create_database_engine, create_session_factory
@@ -33,6 +34,7 @@ def create_app(
     case_loader: FixtureCaseEvidenceLoader | None = None,
     approvers: FixtureApproverDirectory | None = None,
     submission_metrics: SubmissionMetrics | None = None,
+    evaluation_runner: EvaluationRunner | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
     engine = create_database_engine(active_settings.database_url)
@@ -65,6 +67,13 @@ def create_app(
     active_approvers = approvers or FixtureApproverDirectory(fixture_dir / "approvers.json")
     metrics = submission_metrics or SubmissionMetrics()
     application.state.submission_metrics = metrics
+    application.state.evaluation_runner = evaluation_runner or EvaluationRunner(
+        active_settings,
+        fixture_dir=fixture_dir,
+        cases_file=active_settings.corpus_path.parent / "fixtures" / "evaluation_cases.json"
+        if (active_settings.corpus_path.parent / "fixtures" / "evaluation_cases.json").exists()
+        else Path("fixtures/evaluation_cases.json"),
+    )
 
     def workflow_service_factory(session: Session) -> WorkflowRunService:
         dependencies = WorkflowDependencies(

@@ -1,11 +1,12 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol, TypeVar
 
 import httpx
 from pydantic import BaseModel, ValidationError
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
+FakeResponseFactory = Callable[[str, str, type[BaseModel]], dict[str, Any]]
 
 
 class ModelError(RuntimeError):
@@ -91,9 +92,12 @@ class OpenAICompatibleModelProvider:
 
 
 class FakeModelProvider:
-    """Deterministic test provider. Values may be valid payloads or exceptions."""
+    """Deterministic test provider supporting static or input-aware responses."""
 
-    def __init__(self, responses: Sequence[dict[str, Any] | BaseException]) -> None:
+    def __init__(
+        self,
+        responses: Sequence[dict[str, Any] | BaseException | FakeResponseFactory],
+    ) -> None:
         if not responses:
             raise ValueError("FakeModelProvider requires at least one response")
         self._responses = list(responses)
@@ -102,12 +106,13 @@ class FakeModelProvider:
     async def generate_structured(
         self, *, instructions: str, untrusted_content: str, output_type: type[OutputT]
     ) -> OutputT:
-        del instructions, untrusted_content
         index = min(self.call_count, len(self._responses) - 1)
         self.call_count += 1
         response = self._responses[index]
         if isinstance(response, BaseException):
             raise response
+        if callable(response):
+            response = response(instructions, untrusted_content, output_type)
         try:
             return output_type.model_validate(response)
         except ValidationError as exc:

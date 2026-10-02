@@ -35,9 +35,22 @@ def test_approval_resumes_and_completes(client, case_payload: dict) -> None:
     assert response.json()["finance_decision"] is not None
 
 
-def test_evaluations_are_explicitly_deferred(client) -> None:
-    assert client.get("/evaluations").json()["evaluations"] == []
-    assert client.post("/evaluations/run").status_code == 501
+def test_evaluations_list_and_run_deterministically(client) -> None:
+    listed = client.get("/evaluations")
+    assert listed.status_code == 200
+    assert listed.json()["total"] == 5
+    assert [item["case_id"] for item in listed.json()["evaluations"]] == [
+        "FIN-001",
+        "FIN-002",
+        "FIN-003",
+        "FIN-004",
+        "FIN-005",
+    ]
+
+    executed = client.post("/evaluations/run")
+    assert executed.status_code == 200
+    assert executed.json()["total"] == 5
+    assert executed.json()["passed"] == 5
 
 
 def test_approval_unknown_run_and_insufficient_approver(client, case_payload: dict) -> None:

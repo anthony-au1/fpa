@@ -24,7 +24,7 @@ Architectural changes must preserve dependency direction toward domain contracts
 
 ## Developer commands
 
-Use `make build`, `make up`, `make down`, `make test`, `make lint`, and `make format-check`. Use `make ingest` to rebuild the local RAG index, `make retrieve QUERY="..."` to inspect retrieval, and `make rag-eval` for deterministic retrieval evaluation. `make eval` remains deferred. Direct local commands should use `uv run` and the committed lockfile.
+Use `make build`, `make up`, `make down`, `make test`, `make lint`, and `make format-check`. Use `make ingest` to rebuild the local RAG index, `make retrieve QUERY="..."` to inspect retrieval, `make rag-eval` for deterministic retrieval evaluation, and `make eval` for the isolated FIN-001 through FIN-005 acceptance suite. Direct local commands should use `uv run` and the committed lockfile.
 
 ## Coding conventions
 

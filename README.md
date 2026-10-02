@@ -9,6 +9,7 @@ cp .env.example .env
 make build
 make ingest
 make rag-eval
+make eval
 make up
 make test
 ```
@@ -44,6 +45,10 @@ curl -s http://localhost:8000/runs/RUN_ID/approval \
 
 An identical replay returns the same decision. A conflicting callback returns HTTP 409. `GET /runs/RUN_ID` returns the persisted workflow snapshot, pending approval when applicable, simulated decision, and sanitized audit events.
 
+`GET /evaluations` lists FIN-001 through FIN-005. `POST /evaluations/run` executes all five through
+the real workflow with isolated temporary databases, fixture-backed integrations, the actual local RAG
+index, and a deterministic fake model. It never requires live model credentials.
+
 Run a credential-free successful transcript with `make workflow-demo`. Inspect RAG with `make retrieve QUERY="bank account change"`.
 
 ## Real and simulated components
@@ -61,7 +66,12 @@ The public request is a summary `FinancialCase`. For this assessment, line-level
 - `make lint`, `make format-check`, `make test`
 - `make ingest`, `make rag-eval`, `make retrieve QUERY="..."`
 - `make finance-demo`, `make workflow-demo`
+- `make eval`, `make eval-samples`
 - `make up`, `make down`
-- `make eval` remains deferred to Task 5 evaluation packaging.
 
-See `docs/workflow.md`, `docs/finance-controls.md`, `docs/rag.md`, and `docs/persistence.md` for trust boundaries, retries, checkpoints, approval safety, and production limitations.
+`make eval` rebuilds the local index, prints a concise five-case summary, and returns non-zero on any
+failed assertion. Use `uv run python -m app.evaluation.cli --json` for machine-readable results.
+
+See `docs/workflow.md`, `docs/finance-controls.md`, `docs/rag.md`, `docs/persistence.md`, and
+`docs/evaluation.md` for trust boundaries, retries, checkpoints, approval safety, acceptance coverage,
+and production limitations.
