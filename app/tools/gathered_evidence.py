@@ -10,7 +10,7 @@ from app.tools.contracts import (
 
 
 class GatheredEvidenceTools:
-    """Feeds already-gathered evidence into deterministic Task 3 controls."""
+    """Feeds already-gathered evidence into deterministic finance controls."""
 
     def __init__(self, bundle: EvidenceBundle) -> None:
         self.bundle = bundle

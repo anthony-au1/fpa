@@ -1,6 +1,6 @@
 # RAG implementation
 
-The RAG subsystem is an independent, read-only vertical slice. It ingests the supplied Markdown corpus, validates metadata, creates stable heading-aware chunks, persists a deterministic local index, and returns cited evidence. It has no workflow-state, approval, model-prompt, or finance-tool capability.
+The RAG subsystem is an independent, read-only component. It ingests the supplied Markdown corpus, validates metadata, creates stable heading-aware chunks, persists a deterministic local index, and returns cited evidence. It has no workflow-state, approval, or finance-tool capability; the workflow consumes its typed results and constructs the bounded model input.
 
 ## Ingestion and metadata
 
@@ -42,10 +42,13 @@ The adversarial supplier text is indexed and returned verbatim for relevant quer
 
 `make retrieve QUERY="..."` prints rank, document/version/status, authority eligibility, section, citation source, score, and a short preview for inspection. Retrieval errors are explicit for missing, malformed, or incompatible indexes. The async boundary applies `RAG_RETRIEVAL_TIMEOUT_SECONDS` and raises a typed timeout error.
 
-## Limitations and production changes
+## Component limitations
 
 - TF-IDF does not provide neural semantic understanding or multilingual similarity. Production could add an approved regional embedding endpoint or packaged local model behind the existing provider interface.
 - The corpus has no caller/ACL mapping. Production retrieval must enforce legal-entity, business-unit, role, and classification access before returning chunks.
 - The JSON index is intentionally simple and memory-resident; a larger corpus would need incremental indexing, deletion propagation, concurrency control, and a suitable local or managed vector store.
 - BM25 statistics are calculated over eligible candidates at query time, which is appropriate for this corpus but should be precomputed for scale.
-- Retrieved evidence is not yet connected to LangGraph or an LLM. Prompt construction, citation enforcement in recommendations, and workflow audit events are Task 3 concerns.
+- The implemented workflow passes bounded retrieved chunks into structured model analysis. Citation
+  IDs are checked against the run's retrieved set, and authoritative findings must cite
+  `current_authority` chunks. Broader production limitations are maintained in the
+  [design note](design-note.md#limitations-and-production-evolution).

@@ -1,6 +1,6 @@
 # Deterministic finance controls
 
-Task 3 adds a bounded, deterministic evidence and control layer. It does not post invoices, release payments, update vendors, invoke an LLM, or grant approval. `APPROVE_FOR_POSTING` means only that deterministic checks found no blocking issue and the case may proceed to later recommendation and human approval.
+The bounded deterministic evidence and control layer does not post invoices, release payments, update vendors, invoke an LLM, or grant approval. `APPROVE_FOR_POSTING` means only that deterministic checks found no blocking issue and the case may proceed to recommendation and human approval.
 
 ## Evidence tools
 
@@ -35,6 +35,10 @@ Controls report `PASS`, `FAIL`, or `UNKNOWN`; exceptions and unknowns remain sep
 
 Every result says it is not authorization and retains `requires_human_approval=true`.
 
-## Limitations and deferred work
+## Scope note
 
-Fixtures are synthetic and small. There is no live ERP, directory, FX, tax, sanctions, vendor-verification, or payment integration. FIN-POL-002 permits up to AUD 75 freight variance when the PO explicitly permits freight, but the unused constant was removed because freight allocation remains unimplemented. Task 4 owns orchestration, retries, policy analysis, persisted graph pauses, and approval resume. Consequential submission remains denied.
+FIN-POL-002 permits up to AUD 75 freight variance when the PO explicitly permits freight, but the
+unused constant was removed because freight allocation is not implemented. The workflow surrounds
+these controls with bounded evidence retries, model analysis, persisted approval, and an
+approval-gated simulated submission. The authoritative project limitations are in the
+[design note](design-note.md#limitations-and-production-evolution).

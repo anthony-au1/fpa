@@ -1,1 +1,1 @@
-"""Financial processing agent foundation."""
+"""Controlled financial processing and RAG workflow agent."""

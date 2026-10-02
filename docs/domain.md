@@ -2,7 +2,7 @@
 
 ## Core concepts
 
-Task 3 adds typed `InvoiceEvidence`, vendor/PO/history evidence, `ControlFinding` with PASS/FAIL/UNKNOWN, `ControlCalculation`, `DuplicateFinding`, `ApprovalRequirement`, and `DeterministicControlResult`. Facts, calculations, exceptions, unknowns, and outcome candidates remain separate. `APPROVE_FOR_POSTING` at this layer is not payment authorization.
+The domain includes typed `InvoiceEvidence`, vendor/PO/history evidence, `ControlFinding` with PASS/FAIL/UNKNOWN, `ControlCalculation`, `DuplicateFinding`, `ApprovalRequirement`, and `DeterministicControlResult`. Facts, calculations, exceptions, unknowns, and outcome candidates remain separate. `APPROVE_FOR_POSTING` at this layer is not payment authorization.
 
 - **FinancialCase** is the untrusted request envelope: case ID, invoice reference, vendor, amount, currency, and optional invoice/PO/attachment context.
 - **Run** is one persisted execution of a case. Its status is `CREATED`, `RUNNING`, `WAITING_FOR_APPROVAL`, `COMPLETE`, or `FAILED`.
@@ -38,6 +38,6 @@ FIN-POL-003 version 4.0 is current. `FIN-POL-003-OLD` is historical only. The su
 
 ## Deterministic and model-assisted work
 
-Python owns Decimal arithmetic, normalization and exact duplicate checks, tolerance calculations, required-evidence checks, authority thresholds, state transitions, approval gates, idempotency, and budgets. Model assistance may later extract structured facts, interpret cited prose, synthesize evidence, identify possible findings, and draft explanations. Every model output is validated against a closed Pydantic schema and cannot authorize a tool.
+Python owns Decimal arithmetic, normalization and exact duplicate checks, tolerance calculations, required-evidence checks, authority thresholds, state transitions, approval gates, idempotency, and budgets. Model assistance interprets cited prose, synthesizes evidence, identifies possible findings, and drafts explanations. Every model output is validated against a closed Pydantic schema and cannot authorize a tool.
 
-Task 4 adds `PolicyAnalysis`, `EvidenceBundle`, `WorkflowSnapshot`, and sanitized `ApprovalContext`. Policy analysis contains source-linked findings, inferences, and unknowns but deliberately has no outcome or action field. The deterministic control outcome always becomes the recommendation outcome.
+`PolicyAnalysis`, `EvidenceBundle`, `WorkflowSnapshot`, and sanitized `ApprovalContext` connect those boundaries. Policy analysis contains source-linked findings, inferences, and unknowns but deliberately has no outcome or action field. The deterministic control outcome always becomes the recommendation outcome. Approval decisions, the simulated finance decision, and audit events expose actions taken without conflating them with evidence or recommendation.

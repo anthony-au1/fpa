@@ -1,1 +1,1 @@
-"""Workflow nodes; business implementations are intentionally deferred."""
+"""Namespace for explicit workflow-node implementations."""

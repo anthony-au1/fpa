@@ -1,63 +1,95 @@
 # Architecture
 
-This local foundation favors explicit control and inspectable boundaries. FastAPI validates transport data and delegates to services. Services coordinate repositories and, in later tasks, an explicit LangGraph workflow. Domain code owns enforceable rules. Model and tool adapters remain replaceable boundaries rather than sources of authority.
+The application is a bounded Accounts Payable decision-support workflow. FastAPI owns transport;
+LangGraph owns explicit routing; deterministic services own finance truth; the model performs only
+validated synthesis; SQLite owns durable checkpoints, approvals, decisions, and audit history.
 
 ```mermaid
-flowchart LR
-    Client -->|typed HTTP| API[FastAPI]
-    API --> Services[Application services]
-    Services --> Graph[Explicit LangGraph state graph]
-    Graph --> Deterministic[Deterministic controls]
-    Graph --> RAG[RAG retriever]
-    Graph --> ReadTools[Read-only evidence tools]
-    Graph --> Models[ModelProvider]
-    Graph --> Approval[(Persisted approval gate)]
-    Approval --> Submit[Guarded decision submitter]
-    Services --> DB[(SQLite state and audit)]
-    RAG --> Corpus[(Read-only policy corpus)]
-    Corpus -. untrusted data .-> RAG
-    Models -. untrusted output .-> Graph
-    Submit -. simulated only .-> Finance[Finance boundary]
+flowchart TB
+    Client[Client] -->|typed HTTP| API[FastAPI boundary]
+    API --> Graph[Bounded LangGraph workflow]
+
+    subgraph Untrusted[Untrusted data boundary]
+        Case[Case text and attachments]
+        Corpus[(Supplied Markdown corpus)]
+        External[Fixture-backed external-system responses]
+    end
+
+    Case --> API
+    Corpus --> RAG[Local RAG ingestion and retrieval]
+    External --> Tools[Typed read-only finance tools]
+    RAG -->|ranked chunks + authority metadata| Graph
+    Tools -->|typed evidence or explicit failure| Graph
+
+    Graph --> Controls[Deterministic finance controls]
+    Graph --> LLM[ModelProvider: structured policy analysis]
+    Controls --> Recommendation[Constrained recommendation]
+    LLM -. cannot override controls .-> Recommendation
+
+    Recommendation -->|blocking outcome| Complete[Complete]
+    Recommendation -->|posting candidate| Approval[(Persisted human approval)]
+    Approval -->|approved only| Submit[Guarded simulated finance submitter]
+    Approval -->|rejected| Complete
+    Submit --> Decision[(Finance decision record)]
+    Decision --> Complete
+
+    Graph --> DB[(SQLite workflow checkpoints)]
+    Approval --> DB
+    Submit --> DB
+    Graph --> Audit[(Append-only audit events)]
+    Approval --> Audit
+    Submit --> Audit
+
+    LLM -. untrusted validated output .-> Graph
+    RAG -. evidence, never commands .-> Graph
 ```
 
-## Workflow
+There is intentionally no edge from the model or RAG directly to the submitter. The submitter queries
+persistence for an approved decision rather than trusting a caller-provided flag, model statement, or
+retrieved instruction.
+
+## Workflow topology
 
 ```text
 START -> VALIDATE_REQUEST -> RETRIEVE_POLICY -> GATHER_EVIDENCE
       -> RECONCILE -> POLICY_ANALYSIS -> BUILD_RECOMMENDATION
-      -> COMPLETE | WAITING_FOR_APPROVAL
-WAITING_FOR_APPROVAL -> APPROVE/REJECT
-APPROVE -> SUBMIT_FINANCE_DECISION -> COMPLETE
-REJECT  -> COMPLETE
-any active state -> FAILED
+      -> COMPLETE | CREATE_APPROVAL_REQUEST -> WAITING_FOR_APPROVAL
+
+later callback:
+WAITING_FOR_APPROVAL -> RESOLVE_APPROVAL
+    REJECT  -> COMPLETE
+    APPROVE -> SUBMIT_FINANCE_DECISION -> COMPLETE
+
+any active stage -> FAILED
 ```
 
-The graph is bounded by persisted deterministic step and tool-call counters. Task 4 implements each node and checkpoints its typed state in SQLite. LangGraph provides routing; it does not maintain a second checkpoint store.
+Each meaningful node consumes a persisted step or tool-call budget. LangGraph supplies routing but no
+second checkpoint store: `runs.state_payload` is the sole typed resumable snapshot. Waiting for human
+approval ends execution and returns HTTP; a later callback loads and resumes the same run.
 
-`WAITING_FOR_APPROVAL` is persisted state, not a long-running HTTP connection. A later callback reloads the same state, validates the simulated approver evidence and idempotency, records the decision, and resumes at the controlled continuation. A rejection completes without submission. Submission requires validated arguments, a recorded approval, and a unique idempotency key.
+## Responsibility boundaries
+
+- **FastAPI:** validates typed HTTP requests and maps domain failures to status codes; it contains no
+  finance rules.
+- **LangGraph:** sequences fixed nodes, enforces budgets, and selects application-controlled edges.
+- **RAG:** returns read-only cited evidence with relevance, authority, trust, and status metadata.
+- **Read-only tools:** simulate bounded vendor, PO/receipt, and invoice-history integrations while
+  preserving `NOT_FOUND`, `TIMEOUT`, `TRANSIENT_FAILURE`, and `INVALID_REQUEST` semantics.
+- **Deterministic services:** own Decimal calculations, reconciliation, duplicates, evidence checks,
+  policy thresholds, outcome precedence, and approval requirements.
+- **Model provider:** produces validated source-linked analysis without an outcome/action field.
+- **Approval and submitter:** persist human intent and independently enforce the consequential boundary.
+- **SQLite and audit:** provide local restart/resume, uniqueness constraints, and sanitized history.
 
 ## Trust and failure boundaries
 
-- Request text, attachments, retrieved chunks, tool responses, and model output are untrusted at entry and schema-validated.
-- Source permissions and policy status are enforced before generation. Prompt wording cannot upgrade authority.
-- Read tools have narrow typed contracts, timeouts, bounded retries, and observable results. The consequential submitter is a separate deny-by-default interface.
-- SQLite holds resumable state and ordered audit events. General logs contain correlations and outcomes, not full financial secrets.
-- The LLM provider, model labels, timeout, and retry count come from settings. No live provider is required for stable tests.
+Request content, supplier material, retrieved chunks, external tool responses, and model output are
+untrusted at entry. Pydantic validates boundaries; current-policy eligibility is checked before an LLM
+finding can be authoritative. Prompt injection remains retrievable evidence but has no execution path.
 
-## Component manifest
+Timeouts and transient tool failures are retried at most once by default and remain unknown evidence
+after exhaustion. Malformed model output and invalid citations receive a bounded repair attempt and
+then fail safely. No model call performs arithmetic or selects a consequential tool.
 
-### Deterministic finance controls (Task 3)
-
-Typed fixture-backed read-only tools feed deterministic duplicate, vendor, three-way-match, authority, and outcome services. Tool failures stay distinct from business mismatches. Executable rules are reviewed application constants with policy references; RAG content cannot change them. See `docs/finance-controls.md`.
-
-| Component | Foundation choice | Status |
-| --- | --- | --- |
-| API | FastAPI | Implemented skeleton |
-| Agent runtime | LangGraph explicit graph | Implemented with application checkpoints |
-| Persistence | SQLAlchemy + SQLite | Foundation implemented |
-| Document store/index | Local JSON BM25/TF-IDF index | Implemented |
-| Model | OpenAI-compatible `ModelProvider`; disabled default | Implemented; fake injected in tests |
-| Evidence tools | Typed vendor/PO/history contracts | Fixture-backed simulation |
-| Consequential tool | Approval-gated simulated submitter | Implemented simulation |
-
-No cloud resources or cleanup costs exist in this local design.
+See the [component manifest](component-manifest.md), [workflow sequence](workflow.md), and
+[design note](design-note.md) for implementation details and production trade-offs.

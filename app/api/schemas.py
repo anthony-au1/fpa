@@ -28,7 +28,3 @@ class ApprovalRequestBody(ApiModel):
 class EvaluationListResponse(ApiModel):
     total: int
     evaluations: list[EvaluationCaseSummary]
-
-
-class Problem(ApiModel):
-    detail: str

@@ -1,7 +1,7 @@
 [project]
 name = "financial-processing-agent"
 version = "0.1.0"
-description = "Foundation for a controlled Accounts Payable processing agent"
+description = "Controlled Accounts Payable processing and RAG workflow agent"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi==0.115.12",

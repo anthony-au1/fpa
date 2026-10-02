@@ -40,7 +40,11 @@ erDiagram
 
 `runs.state_payload` is the sole checkpoint envelope for typed workflow state; status and counters are also columns for safe querying. Every node records its next resumable stage. LangGraph has no competing checkpoint store. A restart loads the same run and continues only from that persisted boundary. The monotonic version remains available for stronger optimistic concurrency in production.
 
-Approval creation and callbacks use distinct stable idempotency keys. A replay with identical content returns the recorded result; a conflicting reuse is rejected. Only one pending approval may exist for a run. `finance_decisions.run_id` and its idempotency key are unique, guaranteeing one effective consequential decision even when callbacks or downstream requests repeat.
+Approval creation and callbacks use distinct stable idempotency keys. The same persisted callback key
+with the same semantic payload returns the recorded result. The same key with changed content, or a
+different key after resolution, is rejected without changing history. Only one pending approval may
+exist for a run. `finance_decisions.run_id` and its idempotency key are unique, guaranteeing one
+effective local consequential decision even when callbacks or downstream requests repeat.
 
 Audit events are append-only and uniquely ordered per run. Events cover nodes, retrieval, every tool/model attempt, reconciliation, recommendation, approval, resume, submission, replay, completion, and failure. Payloads are sanitized before persistence.
 

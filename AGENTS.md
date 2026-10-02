@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This repository is a take-home assessment foundation for a production-minded Accounts Payable processing agent. The eventual system retrieves policy, gathers evidence, reconciles deterministically, produces a cited recommendation, and stops at a human approval boundary before any consequential finance action.
+This repository is a take-home implementation of a production-minded Accounts Payable processing agent. The system retrieves policy, gathers simulated evidence, reconciles deterministically, produces a cited recommendation, and stops at a human approval boundary before an approval-gated simulated finance action.
 
 Read this file before changing code. Keep the design small enough to explain and defend in an interview.
 

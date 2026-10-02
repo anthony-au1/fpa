@@ -1,6 +1,6 @@
 # Deterministic workflow evaluation
 
-Task 5 provides an acceptance harness for the existing application rather than a second finance
+The acceptance harness exercises the existing application rather than a second finance
 implementation. Each case creates a fresh temporary SQLite database and invokes the same
 `WorkflowRunService`, LangGraph graph, local RAG retriever, fixture-backed finance tools, approval
 directory, repositories, and simulated consequential submitter used by the HTTP application.
@@ -20,7 +20,7 @@ paid model, Docker daemon, or live finance integration is required.
 | FIN-004 | Two bounded PO timeout attempts remain UNKNOWN and produce a safe information hold. |
 | FIN-005 | An identical approval callback replay returns the completed result with one submission. |
 
-Task 4.1 integration tests separately retain the conflict variants: the same callback key with a
+Integration tests separately retain the conflict variants: the same callback key with a
 different payload and a different key after resolution both return HTTP 409.
 
 ## Assertions and diagnostics
@@ -52,9 +52,9 @@ the result's `passed`, `failed`, and assertion fields carry evaluation status.
 Generated examples under `examples/` contain stable statuses, outcomes, steps, and assertions from
 real evaluation runs. Volatile UUIDs, timestamps, durations, secrets, and banking details are omitted.
 
-## Limitations
+## Evaluation scope
 
-This is a small deterministic acceptance suite, not a statistical model benchmark. The local tools,
-approver directory, and finance submission remain simulations. Evaluation databases are intentionally
-ephemeral, and GET lists case definitions rather than historical suite results. Live-model smoke tests
-remain separate from stable acceptance evaluation.
+This is a small deterministic acceptance suite, not a statistical model benchmark. Evaluation
+databases are intentionally ephemeral, and GET lists case definitions rather than historical suite
+results. Live-model smoke tests remain separate from stable acceptance evaluation. The authoritative
+project limitations are in the [design note](design-note.md#limitations-and-production-evolution).
