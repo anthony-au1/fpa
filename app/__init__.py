@@ -1,0 +1,1 @@
+"""Financial processing agent foundation."""

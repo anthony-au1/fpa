@@ -1,0 +1,24 @@
+services:
+  api:
+    build: .
+    environment:
+      DATABASE_URL: sqlite:////app/data/app.db
+      CORPUS_PATH: /app/finance_rag_corpus
+      INDEX_PATH: /app/data/index
+      LLM_PROVIDER: ${LLM_PROVIDER:-disabled}
+      LLM_MODEL: ${LLM_MODEL:-luna}
+      LLM_COMPLEX_MODEL: ${LLM_COMPLEX_MODEL:-terra}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      AGENT_MAX_STEPS: ${AGENT_MAX_STEPS:-20}
+      AGENT_MAX_TOOL_CALLS: ${AGENT_MAX_TOOL_CALLS:-12}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./finance_rag_corpus:/app/finance_rag_corpus:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
