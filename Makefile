@@ -1,4 +1,4 @@
-.PHONY: build up down test lint format format-check ingest retrieve rag-eval finance-demo eval
+.PHONY: build up down test lint format format-check ingest retrieve rag-eval finance-demo workflow-demo eval
 
 build:
 	docker compose build
@@ -33,6 +33,9 @@ rag-eval:
 
 finance-demo:
 	uv run python -m app.services.finance_demo --case "$(or $(CASE),FIN-001)"
+
+workflow-demo:
+	uv run python -m app.services.workflow_demo
 
 eval:
 	@echo "FIN evaluation execution is intentionally deferred to a later task." >&2

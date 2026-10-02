@@ -138,7 +138,11 @@ class ConsequentialToolDenied(PermissionError):
     pass
 
 
+class FinanceSubmissionCommand(ToolModel):
+    run_id: str
+    recommendation_outcome: str
+    idempotency_key: str
+
+
 class FinanceDecisionSubmitter(Protocol):
-    async def submit(
-        self, decision: FinanceDecision, *, approved: bool, idempotency_key: str
-    ) -> str: ...
+    async def submit(self, command: FinanceSubmissionCommand) -> FinanceDecision: ...

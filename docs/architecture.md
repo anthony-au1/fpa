@@ -32,9 +32,9 @@ REJECT  -> COMPLETE
 any active state -> FAILED
 ```
 
-The graph is bounded by deterministic step and tool-call counters. Foundation nodes compile but fail explicitly if executed; the API currently persists a `CREATED` run and does not pretend the unfinished workflow ran.
+The graph is bounded by persisted deterministic step and tool-call counters. Task 4 implements each node and checkpoints its typed state in SQLite. LangGraph provides routing; it does not maintain a second checkpoint store.
 
-`WAITING_FOR_APPROVAL` is persisted state, not a long-running HTTP connection. A later callback reloads the same state, verifies identity/authority and idempotency, records the decision, and resumes at the controlled continuation. A rejection completes without submission. Submission requires validated arguments, a recorded approval, and a unique idempotency key.
+`WAITING_FOR_APPROVAL` is persisted state, not a long-running HTTP connection. A later callback reloads the same state, validates the simulated approver evidence and idempotency, records the decision, and resumes at the controlled continuation. A rejection completes without submission. Submission requires validated arguments, a recorded approval, and a unique idempotency key.
 
 ## Trust and failure boundaries
 
@@ -53,11 +53,11 @@ Typed fixture-backed read-only tools feed deterministic duplicate, vendor, three
 | Component | Foundation choice | Status |
 | --- | --- | --- |
 | API | FastAPI | Implemented skeleton |
-| Agent runtime | LangGraph explicit graph | Topology only |
+| Agent runtime | LangGraph explicit graph | Implemented with application checkpoints |
 | Persistence | SQLAlchemy + SQLite | Foundation implemented |
 | Document store/index | Local JSON BM25/TF-IDF index | Implemented |
-| Model | Configured `ModelProvider`; disabled default | Boundary only |
-| Evidence tools | Typed vendor/PO/history contracts | Boundary only |
-| Consequential tool | Approval-gated simulated submitter | Boundary only |
+| Model | OpenAI-compatible `ModelProvider`; disabled default | Implemented; fake injected in tests |
+| Evidence tools | Typed vendor/PO/history contracts | Fixture-backed simulation |
+| Consequential tool | Approval-gated simulated submitter | Implemented simulation |
 
 No cloud resources or cleanup costs exist in this local design.

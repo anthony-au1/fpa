@@ -1,16 +1,7 @@
 from typing import NotRequired, TypedDict
 
-from app.domain.models import (
-    Calculation,
-    ExceptionFinding,
-    FinancialCase,
-    PolicyFinding,
-    Recommendation,
-    RetrievedDocument,
-    RunStatus,
-    SourcedFact,
-    Unknown,
-)
+from app.domain.models import FinancialCase, RunStatus
+from app.domain.workflow import WorkflowSnapshot
 
 
 class AgentState(TypedDict):
@@ -20,15 +11,7 @@ class AgentState(TypedDict):
     current_node: str
     step_count: int
     tool_call_count: int
-    retrieved_documents: list[RetrievedDocument]
-    sourced_facts: list[SourcedFact]
-    calculations: list[Calculation]
-    policy_findings: list[PolicyFinding]
-    exception_findings: list[ExceptionFinding]
-    unknowns: list[Unknown]
-    recommendation: NotRequired[Recommendation | None]
-    approval_request_id: NotRequired[str | None]
-    finance_decision_id: NotRequired[str | None]
+    snapshot: WorkflowSnapshot
     error: NotRequired[str | None]
 
 

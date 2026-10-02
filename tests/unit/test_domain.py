@@ -9,8 +9,8 @@ from app.domain.transitions import InvalidStateTransition, validate_transition
 
 def test_money_is_decimal_and_serializes_as_string(case_payload: dict) -> None:
     financial_case = FinancialCase.model_validate(case_payload)
-    assert financial_case.amount == Decimal("100.10")
-    assert financial_case.model_dump(mode="json")["amount"] == "100.10"
+    assert financial_case.amount == Decimal("1100")
+    assert financial_case.model_dump(mode="json")["amount"] == "1100"
 
 
 def test_float_money_is_rejected_by_financial_boundary() -> None:

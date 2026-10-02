@@ -39,3 +39,5 @@ FIN-POL-003 version 4.0 is current. `FIN-POL-003-OLD` is historical only. The su
 ## Deterministic and model-assisted work
 
 Python owns Decimal arithmetic, normalization and exact duplicate checks, tolerance calculations, required-evidence checks, authority thresholds, state transitions, approval gates, idempotency, and budgets. Model assistance may later extract structured facts, interpret cited prose, synthesize evidence, identify possible findings, and draft explanations. Every model output is validated against a closed Pydantic schema and cannot authorize a tool.
+
+Task 4 adds `PolicyAnalysis`, `EvidenceBundle`, `WorkflowSnapshot`, and sanitized `ApprovalContext`. Policy analysis contains source-linked findings, inferences, and unknowns but deliberately has no outcome or action field. The deterministic control outcome always becomes the recommendation outcome.

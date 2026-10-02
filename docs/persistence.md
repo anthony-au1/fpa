@@ -38,10 +38,12 @@ erDiagram
     }
 ```
 
-`runs.state_payload` is a checkpoint envelope for the typed graph state; status and counters are also columns for safe querying. A restart loads the same run and continues only from its persisted boundary. A monotonic version supports optimistic update checks when execution is added.
+`runs.state_payload` is the sole checkpoint envelope for typed workflow state; status and counters are also columns for safe querying. Every node records its next resumable stage. LangGraph has no competing checkpoint store. A restart loads the same run and continues only from that persisted boundary. The monotonic version remains available for stronger optimistic concurrency in production.
 
 Approval creation and callbacks use distinct stable idempotency keys. A replay with identical content returns the recorded result; a conflicting reuse is rejected. Only one pending approval may exist for a run. `finance_decisions.run_id` and its idempotency key are unique, guaranteeing one effective consequential decision even when callbacks or downstream requests repeat.
 
-Audit events are append-only and uniquely ordered per run. Events cover transitions, retrievals, calculations, rule applications, tool outcomes/durations, approvals, overrides, and external references. The current foundation records run creation; later workflow work adds the remaining event types.
+Audit events are append-only and uniquely ordered per run. Events cover nodes, retrieval, every tool/model attempt, reconciliation, recommendation, approval, resume, submission, replay, completion, and failure. Payloads are sanitized before persistence.
+
+Approval resolution is committed before graph resume. An identical callback can therefore resume after a crash. The simulated finance decision and completion checkpoint share the request transaction; uniqueness on run and idempotency key prevents duplicate effective decisions. A real external finance API would require a transactional outbox plus the same downstream idempotency key.
 
 SQLite foreign keys are enabled on every connection. Writes that change run state, approvals, decisions, and their audit events must share a transaction. Bank accounts, credentials, signatures, tax identifiers, and unnecessary personal details are excluded or masked before storage. The database and future index live in the mounted `data/` directory and must receive production-appropriate encryption/access controls outside this local exercise.

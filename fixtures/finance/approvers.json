@@ -1,0 +1,5 @@
+[
+  {"approver_id":"manager-1","display_name":"Simulated Cost Centre Manager","roles":["Cost Centre Manager"],"maximum_approval_aud":"10000.00","active":true},
+  {"approver_id":"director-1","display_name":"Simulated Department Director","roles":["Department Director"],"maximum_approval_aud":"50000.00","active":true},
+  {"approver_id":"financial-control-1","display_name":"Simulated Financial Controller","roles":["Financial Control","Chief Financial Officer"],"maximum_approval_aud":"1000000.00","active":true}
+]

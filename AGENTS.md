@@ -52,6 +52,8 @@ Every behavioral change needs tests at the narrowest useful level. Tests must be
 - An agent may recommend but may not release payments, update bank accounts, post journals, or store bank credentials.
 - Keep tool transport failures separate from business `NOT_FOUND`; missing or unavailable evidence never passes.
 - Keep executable financial thresholds in reviewed deterministic rules with policy traceability, never runtime RAG extraction.
+- Consequential submission must query persisted approval itself; never reintroduce caller-provided approval booleans.
+- SQLite `runs.state_payload` is the workflow checkpoint authority; do not add a second checkpoint store without an ADR and a single ownership model.
 
 ## LLM and RAG boundaries
 

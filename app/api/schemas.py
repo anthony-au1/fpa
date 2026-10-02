@@ -2,7 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.domain.models import ApprovalDecision, AuditEvent, FinancialCase, Run
+from app.domain.models import ApprovalDecision, AuditEvent, FinanceDecision, FinancialCase, Run
+from app.domain.workflow import ApprovalContext, WorkflowSnapshot
 
 
 class ApiModel(BaseModel):
@@ -15,6 +16,9 @@ class CreateRunRequest(ApiModel):
 
 class RunResponse(ApiModel):
     run: Run
+    workflow: WorkflowSnapshot
+    pending_approval: ApprovalContext | None = None
+    finance_decision: FinanceDecision | None = None
     audit_events: list[AuditEvent] = Field(default_factory=list)
 
 

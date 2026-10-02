@@ -1,6 +1,6 @@
 # Financial Processing Agent
 
-Foundation for a controlled Accounts Payable agent. It includes deterministic local finance-policy ingestion and retrieval, domain contracts, a persisted run API, an explicit LangGraph topology, audit/idempotency constraints, and safety boundaries. Reconciliation, workflow execution, approvals, finance submission, and FIN scenario evaluation remain deferred.
+A local, production-minded Accounts Payable workflow using FastAPI, LangGraph, deterministic finance controls, local RAG, SQLite checkpoints, structured model analysis, explicit human approval, and an idempotent simulated finance decision.
 
 ## Quick start
 
@@ -11,7 +11,57 @@ make ingest
 make rag-eval
 make up
 make test
-make down
 ```
 
-Inspect retrieval with `make retrieve QUERY="bank account change"`. The RAG implementation is fully local and simulated: it uses deterministic TF-IDF vectors plus lexical ranking and requires no model credentials or external service. `make eval` still exits with an explanatory error because FIN workflow evaluation is not implemented. API documentation is available at `http://localhost:8000/docs` while the service is running.
+`LLM_PROVIDER=disabled` is fail-closed. For live use, configure an OpenAI-compatible endpoint with the provider's documented model identifier:
+
+```dotenv
+LLM_PROVIDER=openai_compatible
+LLM_MODEL=<provider-model-id>
+LLM_BASE_URL=https://provider.example/v1
+LLM_API_KEY=<secret>
+```
+
+The application does not silently substitute a fake model. Automated tests inject a deterministic fake and never use live credentials. `LLM_COMPLEX_MODEL` is reserved; there is no automatic model routing.
+
+## API flow
+
+Start a supported synthetic case:
+
+```bash
+curl -s http://localhost:8000/runs \
+  -H 'content-type: application/json' \
+  -d '{"financial_case":{"case_id":"FIN-001","invoice_reference":"INV-001","vendor":"Acme Supplies Pty Ltd","amount":"1100","currency":"AUD","purchase_order_reference":"PO-1001"}}'
+```
+
+The response stops at `WAITING_FOR_APPROVAL`; no finance decision exists. Resolve it explicitly:
+
+```bash
+curl -s http://localhost:8000/runs/RUN_ID/approval \
+  -H 'content-type: application/json' \
+  -d '{"approval":{"decision":"APPROVE","approver_id":"manager-1","approver_role":"Cost Centre Manager","idempotency_key":"review-001"}}'
+```
+
+An identical replay returns the same decision. A conflicting callback returns HTTP 409. `GET /runs/RUN_ID` returns the persisted workflow snapshot, pending approval when applicable, simulated decision, and sanitized audit events.
+
+Run a credential-free successful transcript with `make workflow-demo`. Inspect RAG with `make retrieve QUERY="bank account change"`.
+
+## Real and simulated components
+
+- Local Markdown RAG and SQLite persistence are real implementations.
+- Finance tools, full invoice evidence, approver directory, and finance submission are explicitly fixture-backed simulations.
+- The finance submission only creates an idempotent local record. It cannot post to an ERP, release payment, update banking data, or move money.
+- The fixture approver directory is not real identity or corporate-authority validation.
+- Live model calls are optional; stable tests use an injected fake provider.
+
+The public request is a summary `FinancialCase`. For this assessment, line-level invoice evidence is loaded by case ID and summary fields must agree. Unknown or contradictory cases fail explicitly.
+
+## Commands
+
+- `make lint`, `make format-check`, `make test`
+- `make ingest`, `make rag-eval`, `make retrieve QUERY="..."`
+- `make finance-demo`, `make workflow-demo`
+- `make up`, `make down`
+- `make eval` remains deferred to Task 5 evaluation packaging.
+
+See `docs/workflow.md`, `docs/finance-controls.md`, `docs/rag.md`, and `docs/persistence.md` for trust boundaries, retries, checkpoints, approval safety, and production limitations.

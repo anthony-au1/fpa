@@ -19,10 +19,13 @@ class Settings(BaseSettings):
     rag_vector_weight: float = Field(default=0.35, ge=0, le=1)
     rag_metadata_weight: float = Field(default=0.15, ge=0, le=1)
     llm_provider: str = "disabled"
-    llm_model: str = "luna"
-    llm_complex_model: str = "terra"
+    llm_model: str = ""
+    llm_complex_model: str = ""
+    llm_api_key: str = ""
+    llm_base_url: str = ""
     llm_timeout_seconds: float = Field(default=30, gt=0)
     llm_max_retries: int = Field(default=2, ge=0)
+    tool_max_retries: int = Field(default=1, ge=0, le=3)
     agent_max_steps: int = Field(default=20, ge=1)
     agent_max_tool_calls: int = Field(default=12, ge=0)
 
