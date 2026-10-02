@@ -1,13 +1,19 @@
 import asyncio
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from app.domain.finance import ControlStatus, DuplicateMatchType, InvoiceEvidence
+from app.domain.finance import ApprovalRole, ControlStatus, DuplicateMatchType, InvoiceEvidence
 from app.domain.models import ExceptionCategory, RecommendationOutcome
 from app.services.finance_controls import FinanceControlService
-from app.tools.contracts import ToolOutcome
+from app.tools.contracts import (
+    InvoiceHistoryRecord,
+    PurchaseOrderRecord,
+    ToolOutcome,
+    VendorRecord,
+)
 from app.tools.fixture_finance import FailurePlan, FixtureFinanceTools
 
 FIXTURES = Path("fixtures/finance")
@@ -32,6 +38,26 @@ def changed(case: InvoiceEvidence, **updates) -> InvoiceEvidence:
     data = case.model_dump(mode="json")
     data.update(updates)
     return InvoiceEvidence.model_validate(data)
+
+
+def tools_with_vendor(vendor: VendorRecord) -> FixtureFinanceTools:
+    vendors = TypeAdapter(list[VendorRecord]).validate_python(
+        json.loads((FIXTURES / "vendors.json").read_text())
+    )
+    vendors = [vendor if item.vendor_id == vendor.vendor_id else item for item in vendors]
+    purchase_orders = TypeAdapter(list[PurchaseOrderRecord]).validate_python(
+        json.loads((FIXTURES / "purchase_orders.json").read_text())
+    )
+    history = TypeAdapter(list[InvoiceHistoryRecord]).validate_python(
+        json.loads((FIXTURES / "invoice_history.json").read_text())
+    )
+    return FixtureFinanceTools(vendors, purchase_orders, history)
+
+
+def vendor_one() -> VendorRecord:
+    return TypeAdapter(list[VendorRecord]).validate_python(
+        json.loads((FIXTURES / "vendors.json").read_text())
+    )[0]
 
 
 def test_fin_001_valid_evidence_passes_without_submission() -> None:
@@ -80,6 +106,9 @@ def test_fin_003_untrusted_notes_cannot_bypass_bank_controls() -> None:
     result = run(load_cases()["FIN-003"])
     assert result.outcome_candidate is RecommendationOutcome.ESCALATE_CONTROL_REVIEW
     assert any(x.category == ExceptionCategory.BANK_CHANGE for x in result.exceptions)
+    assert {ApprovalRole.TREASURY, ApprovalRole.FINANCIAL_CONTROL}.issubset(
+        {requirement.role for requirement in result.required_approvals}
+    )
     assert not result.eligible_for_approval
 
 
@@ -195,3 +224,79 @@ def test_currency_mismatch_is_structured() -> None:
         x.control.value == "CURRENCY" and x.status is ControlStatus.FAIL for x in result.findings
     )
     assert any(x.field == "corporate_fx_rate" for x in result.unknowns)
+    currency_finding = next(x for x in result.findings if x.control.value == "CURRENCY")
+    assert (
+        currency_finding.policy_reference.document_id,
+        currency_finding.policy_reference.version,
+    ) == (
+        "FIN-POL-009",
+        "1.6",
+    )
+
+
+def test_fraud_escalation_requires_two_indicators() -> None:
+    one = run(changed(load_cases()["FIN-001"], risk_indicators=["URGENT_OR_SECRET_LANGUAGE"]))
+    two = run(
+        changed(
+            load_cases()["FIN-001"],
+            risk_indicators=["URGENT_OR_SECRET_LANGUAGE", "BYPASS_APPROVAL_REQUEST"],
+        )
+    )
+    assert one.outcome_candidate is RecommendationOutcome.APPROVE_FOR_POSTING
+    assert two.outcome_candidate is RecommendationOutcome.ESCALATE_CONTROL_REVIEW
+    fraud = next(x for x in two.findings if x.control.value == "HIGH_RISK")
+    assert (fraud.policy_reference.document_id, fraud.policy_reference.version) == (
+        "FIN-POL-005",
+        "2.8",
+    )
+
+
+def test_new_vendor_rule_is_strictly_less_than_30_days() -> None:
+    case = load_cases()["FIN-001"]
+    base = vendor_one()
+    processing = datetime.combine(
+        case.processing_date, datetime.min.time(), tzinfo=base.created_at.tzinfo
+    )
+    day_29 = run(
+        case,
+        tools_with_vendor(base.model_copy(update={"created_at": processing - timedelta(days=29)})),
+    )
+    day_30 = run(
+        case,
+        tools_with_vendor(base.model_copy(update={"created_at": processing - timedelta(days=30)})),
+    )
+    assert day_29.outcome_candidate is RecommendationOutcome.ESCALATE_CONTROL_REVIEW
+    assert day_30.outcome_candidate is RecommendationOutcome.APPROVE_FOR_POSTING
+
+
+def test_bank_change_uses_control_state_not_generic_recency() -> None:
+    case = load_cases()["FIN-001"]
+    base = vendor_one().model_copy(
+        update={
+            "bank_details_changed_at": datetime(2020, 1, 1, tzinfo=vendor_one().created_at.tzinfo),
+            "bank_change_verified": True,
+            "payment_hold": False,
+        }
+    )
+    historical = run(case, tools_with_vendor(base))
+    first_payment = run(
+        case, tools_with_vendor(base.model_copy(update={"first_payment_after_bank_change": True}))
+    )
+    assert not any(x.category == ExceptionCategory.BANK_CHANGE for x in historical.exceptions)
+    assert any(x.category == ExceptionCategory.BANK_CHANGE for x in first_payment.exceptions)
+
+
+def test_emitted_control_references_are_never_superseded() -> None:
+    results = [run(load_cases()[case_id]) for case_id in ("FIN-001", "FIN-002", "FIN-003")]
+    references = []
+    for result in results:
+        references.extend(item.policy_reference for item in result.findings)
+        references.extend(item.policy_reference for item in result.exceptions)
+        references.extend(item.policy_reference for item in result.calculations)
+        references.extend(item.policy_reference for item in result.required_approvals)
+    assert references
+    assert all(reference.document_id != "FIN-POL-003-OLD" for reference in references)
+    assert all(
+        (reference.document_id, reference.version) != ("FIN-POL-003", "1.0")
+        for reference in references
+    )

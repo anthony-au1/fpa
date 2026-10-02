@@ -53,6 +53,7 @@ class VendorRecord(ToolModel):
     bank_country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
     bank_details_changed_at: datetime | None = None
     bank_change_verified: bool | None = None
+    first_payment_after_bank_change: bool = False
     payment_hold: bool = False
     created_at: datetime
     created_by: str

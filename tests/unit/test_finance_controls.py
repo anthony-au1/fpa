@@ -58,7 +58,7 @@ def test_money_rejects_float() -> None:
 def test_current_authority_boundaries(amount: str, role: ApprovalRole) -> None:
     requirement = required_authority(Decimal(amount))
     assert requirement.role is role
-    assert requirement.policy_reference.version == "6.0"
+    assert requirement.policy_reference.version == "4.0"
 
 
 def test_outcome_precedence() -> None:

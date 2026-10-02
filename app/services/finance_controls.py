@@ -19,19 +19,30 @@ from app.domain.finance import (
 from app.domain.models import ExceptionCategory, RecommendationOutcome, SourcedFact, Unknown
 from app.services.duplicate_detection import detect_duplicates, has_blocking_exact_duplicate
 from app.services.policy_rules import (
-    AP_CORE,
-    AUTHORITY,
+    AP_MINIMUM_EVIDENCE,
+    AP_REQUIRED_CHECKS,
     AUTHORITY_BANDS,
-    BANK_CHANGE_LOOKBACK_DAYS,
-    DUPLICATE,
-    FRAUD,
+    AUTHORITY_GENERAL,
+    AUTHORITY_HIGH_RISK,
+    AUTHORITY_LIMITS,
+    DUPLICATE_DETECTION,
+    DUPLICATE_OUTCOMES,
+    EARLY_MANUAL_PAYMENTS,
+    FRAUD_ESCALATION_INDICATOR_COUNT,
+    FRAUD_INDICATORS,
+    FX_CONVERSION,
+    FX_CURRENCY_AGREEMENT,
+    FX_OVERSEAS_ACCOUNTS,
     GOODS_ABSOLUTE_VARIANCE,
     GOODS_PERCENT_VARIANCE,
-    MANUAL_PAYMENT,
+    NEW_VENDOR_DAYS,
     SERVICE_ABSOLUTE_VARIANCE,
     SERVICE_PERCENT_VARIANCE,
-    THREE_WAY,
-    VENDOR,
+    THREE_WAY_MATCHING,
+    THREE_WAY_MISSING_RECEIPT,
+    THREE_WAY_TOLERANCES,
+    VENDOR_BANK_CHANGES,
+    VENDOR_STATUS,
 )
 from app.tools.contracts import (
     CheckInvoiceHistoryInput,
@@ -49,13 +60,13 @@ def required_authority(amount_aud: Decimal) -> ApprovalRequirement:
                 role=role,
                 authority_limit_aud=limit,
                 reason="Total commitment including tax and charges",
-                policy_reference=AUTHORITY,
+                policy_reference=AUTHORITY_LIMITS,
             )
     return ApprovalRequirement(
         role=ApprovalRole.CHIEF_EXECUTIVE_OFFICER,
         authority_limit_aud=None,
         reason="Total commitment exceeds CFO limit",
-        policy_reference=AUTHORITY,
+        policy_reference=AUTHORITY_LIMITS,
     )
 
 
@@ -109,6 +120,8 @@ class FinanceControlService:
         unknowns: list[Unknown] = []
         calculations: list[ControlCalculation] = []
         approvals: list[ApprovalRequirement] = []
+        new_vendor = False
+        overseas_account = False
         now = datetime.now(UTC)
 
         def finding(code, status, summary, expected, observed, policy, sources=None, calcs=None):
@@ -142,6 +155,13 @@ class FinanceControlService:
                 )
             )
 
+        def require_approval(requirement: ApprovalRequirement) -> None:
+            if not any(
+                existing.role == requirement.role and existing.reason == requirement.reason
+                for existing in approvals
+            ):
+                approvals.append(requirement)
+
         # Vendor evidence is one control, never blanket eligibility.
         if vendor_result.metadata.outcome is ToolOutcome.SUCCESS and vendor_result.value:
             vendor = vendor_result.value
@@ -162,7 +182,7 @@ class FinanceControlService:
                     "Vendor is active",
                     "ACTIVE",
                     vendor.status,
-                    VENDOR,
+                    VENDOR_STATUS,
                     [vendor.vendor_id],
                 )
             else:
@@ -172,7 +192,7 @@ class FinanceControlService:
                     "Vendor is not eligible",
                     "ACTIVE",
                     vendor.status,
-                    VENDOR,
+                    VENDOR_STATUS,
                     [vendor.vendor_id],
                 )
                 exception(
@@ -180,39 +200,77 @@ class FinanceControlService:
                     "Eligible vendor status",
                     "ACTIVE",
                     vendor.status,
-                    VENDOR,
+                    VENDOR_STATUS,
                     [vendor.vendor_id],
                     "Vendor Governance",
                 )
-            recent_bank_change = (
-                vendor.bank_details_changed_at
-                and (invoice.processing_date - vendor.bank_details_changed_at.date()).days
-                <= BANK_CHANGE_LOOKBACK_DAYS
+            bank_change_verification_outstanding = (
+                vendor.bank_change_verified is False or vendor.payment_hold
             )
-            if recent_bank_change or vendor.bank_change_verified is False or vendor.payment_hold:
+            bank_change_control_applies = (
+                bank_change_verification_outstanding or vendor.first_payment_after_bank_change
+            )
+            if bank_change_control_applies:
+                expected_bank_control = (
+                    "Verified change and released two-business-day hold"
+                    if bank_change_verification_outstanding
+                    else "Financial Control co-approval for first subsequent payment"
+                )
+                observed_bank_control = (
+                    "Verification or payment hold remains outstanding"
+                    if bank_change_verification_outstanding
+                    else "First subsequent payment requires co-approval"
+                )
                 finding(
                     ControlCode.BANK_CHANGE,
                     ControlStatus.FAIL,
                     "Bank-change controls require independent verification",
-                    "Verified change and released hold",
-                    "Verification or hold remains outstanding",
-                    VENDOR,
+                    expected_bank_control,
+                    observed_bank_control,
+                    VENDOR_BANK_CHANGES,
                     [vendor.vendor_id],
                 )
                 exception(
                     ExceptionCategory.BANK_CHANGE,
                     "Independent bank-change verification",
-                    "Verified by Vendor Governance",
-                    "Not verified or on hold",
-                    VENDOR,
+                    expected_bank_control,
+                    observed_bank_control,
+                    VENDOR_BANK_CHANGES,
                     [vendor.vendor_id],
                     "Vendor Governance",
                 )
-                approvals.append(
+                require_approval(
                     ApprovalRequirement(
                         role=ApprovalRole.FINANCIAL_CONTROL,
                         reason="High-risk bank-change co-approval",
-                        policy_reference=VENDOR,
+                        policy_reference=VENDOR_BANK_CHANGES,
+                    )
+                )
+            vendor_age_days = (invoice.processing_date - vendor.created_at.date()).days
+            new_vendor = 0 <= vendor_age_days < NEW_VENDOR_DAYS
+            overseas_account = vendor.bank_country not in {None, "AU"}
+            if new_vendor or overseas_account:
+                reasons = []
+                if new_vendor:
+                    reasons.append("vendor is less than 30 days old")
+                if overseas_account:
+                    reasons.append("overseas bank account")
+                finding(
+                    ControlCode.HIGH_RISK,
+                    ControlStatus.FAIL,
+                    "Higher-risk transaction requires two approvals",
+                    "Financial Control co-approval",
+                    "; ".join(reasons),
+                    AUTHORITY_HIGH_RISK,
+                    [vendor.vendor_id],
+                )
+                require_approval(
+                    ApprovalRequirement(
+                        role=ApprovalRole.FINANCIAL_CONTROL,
+                        reason="New-vendor or overseas-account co-approval",
+                        policy_reference=(
+                            FX_OVERSEAS_ACCOUNTS if overseas_account else AUTHORITY_HIGH_RISK
+                        ),
                     )
                 )
         else:
@@ -228,7 +286,7 @@ class FinanceControlService:
                 "Vendor could not be verified",
                 "Verified eligible vendor",
                 reason,
-                VENDOR,
+                VENDOR_STATUS,
             )
 
         duplicate_findings = []
@@ -244,7 +302,7 @@ class FinanceControlService:
                 "Exact duplicate check",
                 "No paid/posted exact match",
                 "Blocking exact match" if exact else "No blocking exact match",
-                DUPLICATE,
+                DUPLICATE_DETECTION,
                 [x.matched_record_id for x in duplicate_findings],
             )
             if probable and not exact:
@@ -254,14 +312,14 @@ class FinanceControlService:
                     "Probable duplicate requires review",
                     "No probable match",
                     "Policy signals matched",
-                    DUPLICATE,
+                    DUPLICATE_OUTCOMES,
                 )
                 exception(
                     ExceptionCategory.DUPLICATE_RISK,
                     "Probable duplicate review",
                     "Cleared",
                     "Outstanding",
-                    DUPLICATE,
+                    DUPLICATE_OUTCOMES,
                     [x.matched_record_id for x in duplicate_findings],
                 )
         else:
@@ -280,7 +338,7 @@ class FinanceControlService:
                 "PO required",
                 "Approved purchase order",
                 "No PO reference",
-                AP_CORE,
+                AP_MINIMUM_EVIDENCE,
             )
             finding(
                 ControlCode.PURCHASE_ORDER,
@@ -288,7 +346,7 @@ class FinanceControlService:
                 "Purchase order missing",
                 "Approved PO",
                 "Missing",
-                AP_CORE,
+                AP_MINIMUM_EVIDENCE,
             )
         elif po_result and po_result.metadata.outcome is ToolOutcome.NOT_FOUND:
             exception(
@@ -296,7 +354,7 @@ class FinanceControlService:
                 "PO required",
                 "Existing approved PO",
                 "PO not found",
-                AP_CORE,
+                AP_REQUIRED_CHECKS,
             )
             finding(
                 ControlCode.PURCHASE_ORDER,
@@ -304,7 +362,7 @@ class FinanceControlService:
                 "Purchase order not found",
                 "Existing approved PO",
                 "Not found",
-                AP_CORE,
+                AP_REQUIRED_CHECKS,
             )
         elif po_result and po_result.metadata.outcome is not ToolOutcome.SUCCESS:
             unknowns.append(
@@ -320,7 +378,7 @@ class FinanceControlService:
                 "Purchase order source unavailable",
                 "Verified approved PO",
                 po_result.metadata.outcome.value,
-                AP_CORE,
+                AP_REQUIRED_CHECKS,
             )
         elif po_result and po_result.value:
             po = po_result.value
@@ -331,7 +389,7 @@ class FinanceControlService:
                 "Purchase order validation",
                 "Approved PO for vendor",
                 f"approved={po.approved}, vendor={po.vendor_id}",
-                AP_CORE,
+                AP_REQUIRED_CHECKS,
                 [po.purchase_order_id],
             )
             if po.currency != invoice.currency:
@@ -341,7 +399,7 @@ class FinanceControlService:
                     "Invoice and PO currencies differ",
                     po.currency,
                     invoice.currency,
-                    AP_CORE,
+                    FX_CURRENCY_AGREEMENT,
                     [po.purchase_order_id],
                 )
                 exception(
@@ -349,7 +407,7 @@ class FinanceControlService:
                     "Currency match",
                     po.currency,
                     invoice.currency,
-                    AP_CORE,
+                    FX_CURRENCY_AGREEMENT,
                     [po.purchase_order_id],
                 )
             for line in invoice.lines:
@@ -360,7 +418,7 @@ class FinanceControlService:
                         "PO line match",
                         "Existing PO line",
                         str(line.po_line_id),
-                        THREE_WAY,
+                        THREE_WAY_MATCHING,
                         [po.purchase_order_id],
                     )
                     continue
@@ -380,7 +438,7 @@ class FinanceControlService:
                             "Received quantity",
                             str(line.quantity),
                             str(received),
-                            THREE_WAY,
+                            THREE_WAY_MISSING_RECEIPT,
                             [po.purchase_order_id],
                         )
                         finding(
@@ -389,7 +447,7 @@ class FinanceControlService:
                             "Goods receipt insufficient",
                             str(line.quantity),
                             str(received),
-                            THREE_WAY,
+                            THREE_WAY_MISSING_RECEIPT,
                             [po.purchase_order_id],
                         )
                     absolute, percent = GOODS_ABSOLUTE_VARIANCE, GOODS_PERCENT_VARIANCE
@@ -400,7 +458,7 @@ class FinanceControlService:
                             "Service completion",
                             "Recorded completion",
                             "Missing",
-                            THREE_WAY,
+                            THREE_WAY_MISSING_RECEIPT,
                             [po.purchase_order_id],
                         )
                         finding(
@@ -409,7 +467,7 @@ class FinanceControlService:
                             "Service completion missing",
                             "Recorded completion",
                             "Missing",
-                            THREE_WAY,
+                            THREE_WAY_MISSING_RECEIPT,
                             [po.purchase_order_id],
                         )
                     absolute, percent = SERVICE_ABSOLUTE_VARIANCE, SERVICE_PERCENT_VARIANCE
@@ -431,7 +489,7 @@ class FinanceControlService:
                         allowed_threshold=allowed,
                         currency=invoice.currency,
                         source_ids=[po.purchase_order_id],
-                        policy_reference=THREE_WAY,
+                        policy_reference=THREE_WAY_TOLERANCES,
                     )
                 )
                 if variance > allowed:
@@ -440,7 +498,7 @@ class FinanceControlService:
                         "Line value tolerance",
                         f"<= {allowed}",
                         str(variance),
-                        THREE_WAY,
+                        THREE_WAY_TOLERANCES,
                         [po.purchase_order_id],
                     )
                     finding(
@@ -449,7 +507,7 @@ class FinanceControlService:
                         "Line variance exceeds tolerance",
                         f"<= {allowed}",
                         str(variance),
-                        THREE_WAY,
+                        THREE_WAY_TOLERANCES,
                         [po.purchase_order_id],
                         [calc_id],
                     )
@@ -461,9 +519,9 @@ class FinanceControlService:
                 ControlCode.AUTHORITY,
                 ControlStatus.PASS,
                 "Current authority band identified",
-                "Current FIN-POL-003 v6.0 band",
+                "Current FIN-POL-003 v4.0 band",
                 approvals[0].role,
-                AUTHORITY,
+                AUTHORITY_LIMITS,
             )
         elif invoice.fx_rate and invoice.fx_rate.to_currency == "AUD":
             approvals.insert(0, required_authority(invoice.gross_amount * invoice.fx_rate.rate))
@@ -481,28 +539,44 @@ class FinanceControlService:
                 "AUD authority cannot be calculated",
                 "Sourced corporate FX rate",
                 "Missing",
-                AUTHORITY,
+                FX_CONVERSION,
             )
 
-        high_risk = bool(invoice.risk_indicators) or invoice.payment_type.value != "STANDARD"
-        if high_risk:
+        fraud_escalation = len(invoice.risk_indicators) >= FRAUD_ESCALATION_INDICATOR_COUNT
+        manual_payment = invoice.payment_type.value != "STANDARD"
+        if fraud_escalation:
             finding(
                 ControlCode.HIGH_RISK,
                 ControlStatus.FAIL,
                 "High-risk indicators require review",
                 "No unresolved high-risk indicators",
-                ",".join(sorted(x.value for x in invoice.risk_indicators)) or invoice.payment_type,
-                FRAUD,
+                ",".join(sorted(x.value for x in invoice.risk_indicators)),
+                FRAUD_INDICATORS,
             )
-            approvals.append(
+            require_approval(
                 ApprovalRequirement(
                     role=ApprovalRole.FINANCIAL_CONTROL,
-                    reason="High-risk control review",
-                    policy_reference=MANUAL_PAYMENT
-                    if invoice.payment_type.value != "STANDARD"
-                    else FRAUD,
+                    reason="Fraud-indicator control review",
+                    policy_reference=FRAUD_INDICATORS,
                 )
             )
+        if manual_payment:
+            finding(
+                ControlCode.HIGH_RISK,
+                ControlStatus.FAIL,
+                "Manual or same-day payment requires additional approvals",
+                "Treasury approval and Financial Control co-approval",
+                invoice.payment_type,
+                EARLY_MANUAL_PAYMENTS,
+            )
+            for role in (ApprovalRole.TREASURY, ApprovalRole.FINANCIAL_CONTROL):
+                require_approval(
+                    ApprovalRequirement(
+                        role=role,
+                        reason="Manual or same-day payment approval",
+                        policy_reference=EARLY_MANUAL_PAYMENTS,
+                    )
+                )
         if (
             invoice.actors.requester_personal_benefit is True
             and invoice.actors.requester_id == invoice.actors.financial_approver_id
@@ -513,21 +587,27 @@ class FinanceControlService:
                 "Self-approval is prohibited",
                 "Distinct requester and approver",
                 "Same identity",
-                AUTHORITY,
+                AUTHORITY_GENERAL,
             )
             exception(
                 ExceptionCategory.AUTHORITY_GAP,
                 "Segregation of duties",
                 "Distinct identities",
                 "Same identity",
-                AUTHORITY,
+                AUTHORITY_GENERAL,
             )
 
         exact = has_blocking_exact_duplicate(duplicate_findings)
         invalid = any(e.category == ExceptionCategory.VENDOR_BLOCK for e in exceptions)
-        escalation = high_risk or any(
-            e.category in {ExceptionCategory.BANK_CHANGE, ExceptionCategory.AUTHORITY_GAP}
-            for e in exceptions
+        escalation = (
+            fraud_escalation
+            or manual_payment
+            or new_vendor
+            or overseas_account
+            or any(
+                e.category in {ExceptionCategory.BANK_CHANGE, ExceptionCategory.AUTHORITY_GAP}
+                for e in exceptions
+            )
         )
         hold = bool(
             exceptions or unknowns or any(f.status is not ControlStatus.PASS for f in findings)

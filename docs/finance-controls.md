@@ -16,8 +16,9 @@ Executable constants live in `app/services/policy_rules.py`; each points to a cu
 - Probable duplicates require at least two indicators, including punctuation-insensitive reference or attachment fingerprint. Other signals are date proximity within 14 days, amount variance below 0.5%, and same PO. They hold for review, not automatic rejection.
 - Goods require receipt quantity and use the lower of AUD 50 or 1% of PO-line value. Services require completion and use the lower of AUD 100 or 2%.
 - Currency must match. Foreign-currency authority needs an explicit corporate rate, date, and source; no FX rate is invented.
-- Vendor status is independent. ACTIVE does not imply that other controls pass. Recent/unverified bank changes or payment holds create a bank-change exception and Financial Control requirement; invoice text cannot verify banking data.
-- Current `FIN-POL-003` v6.0 bands use total commitment: Cost Centre Manager through AUD 10,000; Department Director through 50,000; Executive Director through 250,000; CFO through 1,000,000; CEO above. Superseded values are not accepted as input.
+- Vendor status is independent. ACTIVE does not imply that other controls pass. Unverified bank changes, active payment holds, or the first payment after a verified bank change trigger the applicable hold or Financial Control requirement; the corpus defines no generic bank-change recency window. Invoice text cannot verify banking data.
+- Current `FIN-POL-003` v4.0 bands use total commitment: Cost Centre Manager through AUD 10,000; Department Director through 50,000; Executive Director through 250,000; CFO through 1,000,000; CEO above. Vendors less than 30 days old and overseas accounts are higher risk. Superseded values are not accepted as input.
+- Two or more fraud indicators trigger escalation under FIN-POL-005 v2.8. Manual or same-day payments require Treasury approval and Financial Control co-approval under FIN-POL-006 v3.0. Foreign-currency agreement and conversion controls use FIN-POL-009 v1.6.
 - Supported self-approval conflicts create an authority-gap exception. Missing identities are not guessed.
 
 All arithmetic uses `Decimal`. Calculations preserve inputs, formula, threshold, result, source IDs, and policy reference.
@@ -36,4 +37,4 @@ Every result says it is not authorization and retains `requires_human_approval=t
 
 ## Limitations and deferred work
 
-Fixtures are synthetic and small. There is no live ERP, directory, FX, tax, sanctions, vendor-verification, or payment integration. Freight allocation is deferred because the scenarios do not justify inventing rules. Task 4 owns orchestration, retries, policy analysis, persisted graph pauses, and approval resume. Consequential submission remains denied.
+Fixtures are synthetic and small. There is no live ERP, directory, FX, tax, sanctions, vendor-verification, or payment integration. FIN-POL-002 permits up to AUD 75 freight variance when the PO explicitly permits freight, but the unused constant was removed because freight allocation remains unimplemented. Task 4 owns orchestration, retries, policy analysis, persisted graph pauses, and approval resume. Consequential submission remains denied.
