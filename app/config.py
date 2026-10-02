@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/app.db"
     corpus_path: Path = Path("finance_rag_corpus")
     index_path: Path = Path("data/index")
+    rag_embedding_provider: str = "local_tfidf"
+    rag_chunk_max_chars: int = Field(default=1800, ge=400, le=10000)
+    rag_retrieval_timeout_seconds: float = Field(default=2, gt=0)
+    rag_bm25_weight: float = Field(default=0.5, ge=0, le=1)
+    rag_vector_weight: float = Field(default=0.35, ge=0, le=1)
+    rag_metadata_weight: float = Field(default=0.15, ge=0, le=1)
     llm_provider: str = "disabled"
     llm_model: str = "luna"
     llm_complex_model: str = "terra"

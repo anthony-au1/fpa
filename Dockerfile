@@ -13,6 +13,7 @@ RUN uv sync --frozen --no-install-project
 
 COPY app ./app
 COPY tests ./tests
+COPY fixtures ./fixtures
 COPY finance_rag_corpus ./finance_rag_corpus
 
 RUN useradd --create-home --uid 10001 appuser \

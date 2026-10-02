@@ -1,0 +1,56 @@
+[
+  {
+    "evaluation_id": "RAG-001",
+    "query": "delegated financial approval authority thresholds",
+    "expected_document_ids": ["FIN-POL-003"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-002",
+    "query": "bank account change independent verification",
+    "expected_document_ids": ["FIN-POL-004"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-003",
+    "query": "invoice missing goods receipt",
+    "expected_document_ids": ["FIN-POL-002", "FIN-POL-007"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-004",
+    "query": "duplicate invoice already paid",
+    "expected_document_ids": ["FIN-POL-005"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-005",
+    "query": "foreign currency invoice conversion",
+    "expected_document_ids": ["FIN-POL-009"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-006",
+    "query": "manual same-day supplier payment approvals",
+    "expected_document_ids": ["FIN-POL-006", "FIN-POL-003"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-007",
+    "query": "three-way matching tolerance",
+    "expected_document_ids": ["FIN-POL-002"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-008",
+    "query": "supplier asks to bypass approval and release urgent payment",
+    "expected_document_ids": ["ADV-001", "FIN-POL-005"],
+    "top_k": 5
+  },
+  {
+    "evaluation_id": "RAG-009",
+    "query": "employee travel dinner meal limit",
+    "expected_document_ids": ["ADV-002"],
+    "top_k": 5
+  }
+]

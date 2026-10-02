@@ -51,7 +51,7 @@ The graph is bounded by deterministic step and tool-call counters. Foundation no
 | API | FastAPI | Implemented skeleton |
 | Agent runtime | LangGraph explicit graph | Topology only |
 | Persistence | SQLAlchemy + SQLite | Foundation implemented |
-| Document store/index | Local persisted embedding index | Deferred |
+| Document store/index | Local JSON BM25/TF-IDF index | Implemented |
 | Model | Configured `ModelProvider`; disabled default | Boundary only |
 | Evidence tools | Typed vendor/PO/history contracts | Boundary only |
 | Consequential tool | Approval-gated simulated submitter | Boundary only |

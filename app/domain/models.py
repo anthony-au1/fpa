@@ -66,6 +66,20 @@ class DocumentAuthority(StrEnum):
     UNTRUSTED = "untrusted"
 
 
+class AuthorityEligibility(StrEnum):
+    CURRENT_AUTHORITY = "current_authority"
+    HISTORICAL_ONLY = "historical_only"
+    EVIDENCE_ONLY = "evidence_only"
+    NON_AUTHORITY = "non_authority"
+
+
+class DocumentCategory(StrEnum):
+    CURRENT_POLICY = "current_policy"
+    SUPERSEDED_POLICY = "superseded_policy"
+    UNTRUSTED_EVIDENCE = "untrusted_evidence"
+    IRRELEVANT_REFERENCE = "irrelevant_reference"
+
+
 class ExceptionCategory(StrEnum):
     MISSING_PO = "MISSING_PO"
     MISSING_RECEIPT = "MISSING_RECEIPT"
@@ -101,6 +115,7 @@ class Citation(DomainModel):
     version: str | None = None
     section: str | None = None
     chunk_id: str | None = None
+    source_filename: str | None = None
 
 
 class RetrievedDocument(DomainModel):
@@ -108,10 +123,20 @@ class RetrievedDocument(DomainModel):
     title: str
     version: str | None = None
     authority: DocumentAuthority
+    authority_eligibility: AuthorityEligibility
+    authority_reason: str
+    category: DocumentCategory
+    classification: str
+    jurisdiction: str
+    tags: list[str]
+    effective_date: date
+    superseded_date: date | None = None
+    source_filename: str
     chunk_id: str
     heading: str | None = None
     content: str
     relevance: Decimal = Field(ge=0)
+    score_components: dict[str, Decimal] = Field(default_factory=dict)
     citation: Citation
 
 

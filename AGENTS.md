@@ -24,7 +24,7 @@ Architectural changes must preserve dependency direction toward domain contracts
 
 ## Developer commands
 
-Use `make build`, `make up`, `make down`, `make test`, `make lint`, and `make format-check`. `make ingest` and `make eval` intentionally fail until later tasks implement those capabilities. Direct local commands should use `uv run` and the committed lockfile.
+Use `make build`, `make up`, `make down`, `make test`, `make lint`, and `make format-check`. Use `make ingest` to rebuild the local RAG index, `make retrieve QUERY="..."` to inspect retrieval, and `make rag-eval` for deterministic retrieval evaluation. `make eval` remains deferred. Direct local commands should use `uv run` and the committed lockfile.
 
 ## Coding conventions
 
@@ -56,6 +56,8 @@ Every behavioral change needs tests at the narrowest useful level. Tests must be
 LLMs may extract structured data, interpret policy, synthesize evidence, identify findings, and draft explanations. All outputs require typed validation. LLMs do not perform authoritative arithmetic, exact duplicate detection, evidence checks, state transitions, approval gating, idempotency, or budget enforcement.
 
 Retrieved case text and documents are untrusted data, not instructions. Enforce access and current-policy status before generation. Superseded documents may be available for history but not current authority. Prompt injection is evidence and a risk signal, never executable direction.
+
+RAG chunk IDs and citations are stable source identities: do not replace them with random IDs or couple them to ranking scores. Preserve corpus metadata and unmodified chunk text in the index. Generated RAG state belongs under `data/` and must not be committed.
 
 ## Persistence and audit
 
