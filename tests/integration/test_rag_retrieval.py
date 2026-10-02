@@ -37,19 +37,29 @@ def test_policy_identifiers_retrieve_corresponding_documents(retriever) -> None:
 
 
 def test_current_and_superseded_authority_are_separate(retriever) -> None:
-    current = retriever.retrieve_sync(
+    relevant = retriever.retrieve_sync(
         RetrievalQuery(query="delegated financial approval authority thresholds", top_k=10)
     )
-    assert "FIN-POL-003" in document_ids(current)
-    assert "FIN-POL-003-OLD" not in document_ids(current)
-
-    historical = retriever.retrieve_sync(
-        RetrievalQuery(query="FIN-POL-003", top_k=20, include_superseded=True)
+    current = next(result for result in relevant.results if result.document_id == "FIN-POL-003")
+    historical = next(
+        result for result in relevant.results if result.document_id == "FIN-POL-003-OLD"
     )
-    old = next(result for result in historical.results if result.document_id == "FIN-POL-003-OLD")
-    assert historical.results[0].document_id == "FIN-POL-003"
-    assert old.authority == DocumentAuthority.SUPERSEDED
-    assert old.authority_eligibility == AuthorityEligibility.HISTORICAL_ONLY
+    assert current.authority == DocumentAuthority.CURRENT
+    assert current.authority_eligibility == AuthorityEligibility.CURRENT_AUTHORITY
+    assert current.category == DocumentCategory.CURRENT_POLICY
+    assert historical.authority == DocumentAuthority.SUPERSEDED
+    assert historical.authority_eligibility == AuthorityEligibility.HISTORICAL_ONLY
+    assert historical.category == DocumentCategory.SUPERSEDED_POLICY
+
+    current_only = retriever.retrieve_sync(
+        RetrievalQuery(
+            query="delegated financial approval authority thresholds",
+            top_k=10,
+            include_superseded=False,
+        )
+    )
+    assert "FIN-POL-003" in document_ids(current_only)
+    assert "FIN-POL-003-OLD" not in document_ids(current_only)
 
 
 def test_prompt_injection_remains_retrievable_untrusted_data(retriever) -> None:

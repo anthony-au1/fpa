@@ -81,7 +81,7 @@ class RagIndex(RagModel):
 class RetrievalQuery(RagModel):
     query: str = Field(min_length=1, max_length=2000)
     top_k: int = Field(default=5, ge=1, le=20)
-    include_superseded: bool = False
+    include_superseded: bool = True
 
 
 class RetrievalResponse(RagModel):
@@ -110,7 +110,7 @@ class EvaluationCase(RagModel):
     query: str
     expected_document_ids: list[str] = Field(min_length=1)
     top_k: int = Field(default=5, ge=1, le=20)
-    include_superseded: bool = False
+    include_superseded: bool = True
 
 
 class EvaluationMetrics(RagModel):

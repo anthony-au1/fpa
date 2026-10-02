@@ -22,17 +22,17 @@ No vector database is used. The small index is loaded into memory, and cosine si
 
 ## Retrieval and ranking
 
-`retrieve_finance_documents` accepts a query, `top_k`, and `include_superseded`. Ranking combines configurable signals whose defaults sum to one:
+`retrieve_finance_documents` accepts a query, `top_k`, and `include_superseded`. Superseded evidence is included by default and participates in the same relevance calculation as every other chunk. Callers that do not need historical evidence can explicitly set `include_superseded=false`. Ranking combines configurable signals whose defaults sum to one:
 
 - 0.50 normalized BM25 over chunk search text.
 - 0.35 TF-IDF cosine similarity.
 - 0.15 query-token coverage in document ID, title, heading, and tags.
 
-An exact full document-ID query is sorted first explicitly. Other ties are resolved by score, document ID, heading, and chunk ID. Returned component scores make ranking explainable. The default excludes superseded content; callers can request it for audit/history. Superseded material is never deleted from the index.
+An exact full document-ID query is sorted first explicitly. Other ties are resolved by score, document ID, heading, and chunk ID. Returned component scores make ranking explainable. Status does not apply a relevance penalty or boost: a superseded policy can rank highly when its text is genuinely relevant. Superseded material is never deleted from the index.
 
 ## Authority, trust, and prompt injection
 
-Relevance and authority are separate fields. Current policies are `current_authority`; superseded policies are `historical_only`; the supplier document is `evidence_only`; and metadata tagged `irrelevant` is `non_authority`. Status, category, classification, jurisdiction, and tags remain visible on every result.
+Relevance and authority are separate fields. Current policies are `current_authority`; superseded policies are always `historical_only` and `superseded_policy`; the supplier document is `evidence_only`; and metadata tagged `irrelevant` is `non_authority`. Status, category, classification, jurisdiction, and tags remain visible on every result. Future financial decision logic must admit only `current_authority` evidence into authoritative policy findings even when historical evidence has a strong relevance score.
 
 The adversarial supplier text is indexed and returned verbatim for relevant queries. Retrieval does not interpret instructions, construct executable actions, call tools, alter prompts, or mutate workflow state. Its external/unverified metadata is a structural signal to downstream code. The travel extract is not hardcoded out: AP queries rank it through the same signals, while travel queries can retrieve it.
 

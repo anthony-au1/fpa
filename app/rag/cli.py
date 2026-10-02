@@ -40,12 +40,12 @@ def ingest() -> int:
     return 0
 
 
-def retrieve(query: str, top_k: int, include_superseded: bool) -> int:
+def retrieve(query: str, top_k: int, exclude_superseded: bool) -> int:
     response = _retriever().retrieve_sync(
         RetrievalQuery(
             query=query,
             top_k=top_k,
-            include_superseded=include_superseded,
+            include_superseded=not exclude_superseded,
         )
     )
     for rank, result in enumerate(response.results, start=1):
@@ -78,7 +78,7 @@ def main() -> int:
     retrieve_parser = subparsers.add_parser("retrieve")
     retrieve_parser.add_argument("query")
     retrieve_parser.add_argument("--top-k", type=int, default=5)
-    retrieve_parser.add_argument("--include-superseded", action="store_true")
+    retrieve_parser.add_argument("--exclude-superseded", action="store_true")
     evaluate_parser = subparsers.add_parser("evaluate")
     evaluate_parser.add_argument(
         "--dataset", type=Path, default=Path("fixtures/rag_evaluation.json")
@@ -87,7 +87,7 @@ def main() -> int:
     if arguments.command == "ingest":
         return ingest()
     if arguments.command == "retrieve":
-        return retrieve(arguments.query, arguments.top_k, arguments.include_superseded)
+        return retrieve(arguments.query, arguments.top_k, arguments.exclude_superseded)
     return evaluate(arguments.dataset)
 
 
