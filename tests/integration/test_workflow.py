@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.config import Settings
 from app.domain.models import FinancialCase
@@ -9,6 +10,7 @@ from app.llm.provider import FakeModelProvider
 from app.main import create_app
 from app.persistence.database import Base, create_database_engine, create_session_factory
 from app.persistence.repositories import RunRepository
+from app.persistence.tables import ApprovalRequestRow
 from app.rag.ingestion import build_index
 from app.tools.contracts import ConsequentialToolDenied, FinanceSubmissionCommand, ToolOutcome
 from app.tools.fixture_finance import FailurePlan, FixtureFinanceTools
@@ -76,7 +78,18 @@ def approval(decision: str = "APPROVE", key: str = "callback-1") -> dict:
     }
 
 
-def test_approval_replay_is_exactly_once_and_conflict_is_rejected(tmp_path: Path) -> None:
+def persisted_approval(tmp_path: Path, run_id: str) -> ApprovalRequestRow:
+    engine = create_database_engine(f"sqlite:///{tmp_path / 'workflow.db'}")
+    factory = create_session_factory(engine)
+    with factory() as session:
+        row = session.scalar(select(ApprovalRequestRow).where(ApprovalRequestRow.run_id == run_id))
+        assert row is not None
+        session.expunge(row)
+    engine.dispose()
+    return row
+
+
+def test_approve_replay_with_same_key_is_exactly_once(tmp_path: Path) -> None:
     metrics = SubmissionMetrics()
     app = create_app(
         settings(tmp_path),
@@ -86,13 +99,54 @@ def test_approval_replay_is_exactly_once_and_conflict_is_rejected(tmp_path: Path
     with TestClient(app) as client:
         started = client.post("/runs", json={"financial_case": case("FIN-001")}).json()
         run_id = started["run"]["run_id"]
-        first = client.post(f"/runs/{run_id}/approval", json=approval())
-        replay = client.post(f"/runs/{run_id}/approval", json=approval())
-        conflict = client.post(f"/runs/{run_id}/approval", json=approval("REJECT", "callback-2"))
+        first = client.post(f"/runs/{run_id}/approval", json=approval(key="callback-A"))
+        replay = client.post(f"/runs/{run_id}/approval", json=approval(key="callback-A"))
     assert first.status_code == replay.status_code == 200
     assert first.json()["finance_decision"] == replay.json()["finance_decision"]
     assert metrics.execution_count == 1
+    row = persisted_approval(tmp_path, run_id)
+    assert row.callback_idempotency_key == "callback-A"
+    assert row.decision_payload["decision"] == "APPROVE"
+
+
+def test_same_callback_key_with_different_payload_conflicts(tmp_path: Path) -> None:
+    metrics = SubmissionMetrics()
+    app = create_app(
+        settings(tmp_path),
+        model_provider=FakeModelProvider([VALID_ANALYSIS]),
+        submission_metrics=metrics,
+    )
+    with TestClient(app) as client:
+        run_id = client.post("/runs", json={"financial_case": case("FIN-001")}).json()["run"][
+            "run_id"
+        ]
+        first = client.post(f"/runs/{run_id}/approval", json=approval("APPROVE", "callback-A"))
+        conflict = client.post(f"/runs/{run_id}/approval", json=approval("REJECT", "callback-A"))
+    assert first.status_code == 200
     assert conflict.status_code == 409
+    assert metrics.execution_count == 1
+    row = persisted_approval(tmp_path, run_id)
+    assert row.callback_idempotency_key == "callback-A"
+    assert row.decision_payload["decision"] == "APPROVE"
+
+
+def test_identical_approve_with_different_callback_key_conflicts(tmp_path: Path) -> None:
+    metrics = SubmissionMetrics()
+    app = create_app(
+        settings(tmp_path),
+        model_provider=FakeModelProvider([VALID_ANALYSIS]),
+        submission_metrics=metrics,
+    )
+    with TestClient(app) as client:
+        run_id = client.post("/runs", json={"financial_case": case("FIN-001")}).json()["run"][
+            "run_id"
+        ]
+        first = client.post(f"/runs/{run_id}/approval", json=approval("APPROVE", "callback-A"))
+        conflict = client.post(f"/runs/{run_id}/approval", json=approval("APPROVE", "callback-B"))
+    assert first.status_code == 200
+    assert conflict.status_code == 409
+    assert metrics.execution_count == 1
+    assert persisted_approval(tmp_path, run_id).callback_idempotency_key == "callback-A"
 
 
 def test_rejection_completes_without_submission(tmp_path: Path) -> None:
@@ -111,6 +165,47 @@ def test_rejection_completes_without_submission(tmp_path: Path) -> None:
     assert response.json()["run"]["status"] == "COMPLETE"
     assert response.json()["finance_decision"] is None
     assert metrics.execution_count == 0
+
+
+def test_reject_replay_with_same_key_returns_stable_result(tmp_path: Path) -> None:
+    metrics = SubmissionMetrics()
+    app = create_app(
+        settings(tmp_path),
+        model_provider=FakeModelProvider([VALID_ANALYSIS]),
+        submission_metrics=metrics,
+    )
+    with TestClient(app) as client:
+        run_id = client.post("/runs", json={"financial_case": case("FIN-001")}).json()["run"][
+            "run_id"
+        ]
+        first = client.post(f"/runs/{run_id}/approval", json=approval("REJECT", "callback-A"))
+        replay = client.post(f"/runs/{run_id}/approval", json=approval("REJECT", "callback-A"))
+    assert first.status_code == replay.status_code == 200
+    assert first.json()["run"] == replay.json()["run"]
+    assert first.json()["finance_decision"] is None
+    assert replay.json()["finance_decision"] is None
+    assert metrics.execution_count == 0
+
+
+def test_reject_then_approve_with_different_key_conflicts(tmp_path: Path) -> None:
+    metrics = SubmissionMetrics()
+    app = create_app(
+        settings(tmp_path),
+        model_provider=FakeModelProvider([VALID_ANALYSIS]),
+        submission_metrics=metrics,
+    )
+    with TestClient(app) as client:
+        run_id = client.post("/runs", json={"financial_case": case("FIN-001")}).json()["run"][
+            "run_id"
+        ]
+        rejected = client.post(f"/runs/{run_id}/approval", json=approval("REJECT", "callback-A"))
+        conflict = client.post(f"/runs/{run_id}/approval", json=approval("APPROVE", "callback-B"))
+    assert rejected.status_code == 200
+    assert conflict.status_code == 409
+    assert metrics.execution_count == 0
+    row = persisted_approval(tmp_path, run_id)
+    assert row.callback_idempotency_key == "callback-A"
+    assert row.decision_payload["decision"] == "REJECT"
 
 
 def test_restart_resumes_same_waiting_run(tmp_path: Path) -> None:

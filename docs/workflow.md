@@ -51,13 +51,13 @@ sequenceDiagram
 
 The approver directory is synthetic and validates only fixture identity, claimed role, active status, and AUD limit. It is not enterprise authentication. Submission has no real finance-system capability. It queries persisted approval and denies caller/model claims of approval.
 
-Approval-request and finance-decision keys are SHA-256 hashes of versioned canonical identities. A duplicate identical callback returns the existing result. A conflicting decision or approver is rejected without rewriting history. The database permits one effective finance decision per run.
+Approval-request and finance-decision keys are SHA-256 hashes of versioned canonical identities. Approval callback replay identity is the persisted callback idempotency key: the same key with the same semantic payload returns the existing result. Reusing that key with different content, or sending a different key after the approval is resolved even when its business payload is identical, is rejected without rewriting history. The database retains a uniqueness constraint on callback keys and permits one effective finance decision per run.
 
 ```mermaid
 sequenceDiagram
     Client->>API: APPROVE callback
     API->>DB: resolve and submit once
-    Client->>API: identical APPROVE replay
+    Client->>API: same key + identical APPROVE replay
     API->>DB: load resolved approval and decision
     API-->>Client: same stable result
 ```

@@ -92,8 +92,12 @@ class WorkflowRunService:
             raise RunNotWaiting("Run has no approval request")
         existing = approvals.decision(row)
         if existing is not None:
-            if not self._same_decision(existing, decision):
-                raise ApprovalConflict("Approval request was already resolved differently")
+            if row.callback_idempotency_key != decision.idempotency_key:
+                raise ApprovalConflict(
+                    "Approval request was already resolved by a different callback"
+                )
+            if not self._same_callback_payload(existing, decision):
+                raise ApprovalConflict("Approval callback key was reused with a different payload")
             if run.status is RunStatus.RUNNING:
                 return await self.execute(run_id)
             return run
@@ -135,7 +139,7 @@ class WorkflowRunService:
         return FinanceDecisionRepository(self.deps.session).get_for_run(run_id)
 
     @staticmethod
-    def _same_decision(existing: ApprovalDecision, incoming: ApprovalDecision) -> bool:
+    def _same_callback_payload(existing: ApprovalDecision, incoming: ApprovalDecision) -> bool:
         return (
             existing.decision == incoming.decision
             and existing.approver_id == incoming.approver_id
