@@ -2,6 +2,8 @@
 
 ## Core concepts
 
+Task 3 adds typed `InvoiceEvidence`, vendor/PO/history evidence, `ControlFinding` with PASS/FAIL/UNKNOWN, `ControlCalculation`, `DuplicateFinding`, `ApprovalRequirement`, and `DeterministicControlResult`. Facts, calculations, exceptions, unknowns, and outcome candidates remain separate. `APPROVE_FOR_POSTING` at this layer is not payment authorization.
+
 - **FinancialCase** is the untrusted request envelope: case ID, invoice reference, vendor, amount, currency, and optional invoice/PO/attachment context.
 - **Run** is one persisted execution of a case. Its status is `CREATED`, `RUNNING`, `WAITING_FOR_APPROVAL`, `COMPLETE`, or `FAILED`.
 - **RetrievedDocument** is a ranked corpus chunk with identity, version, authority status, and citation metadata. Retrieval does not confer authority.

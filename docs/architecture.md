@@ -46,6 +46,10 @@ The graph is bounded by deterministic step and tool-call counters. Foundation no
 
 ## Component manifest
 
+### Deterministic finance controls (Task 3)
+
+Typed fixture-backed read-only tools feed deterministic duplicate, vendor, three-way-match, authority, and outcome services. Tool failures stay distinct from business mismatches. Executable rules are reviewed application constants with policy references; RAG content cannot change them. See `docs/finance-controls.md`.
+
 | Component | Foundation choice | Status |
 | --- | --- | --- |
 | API | FastAPI | Implemented skeleton |

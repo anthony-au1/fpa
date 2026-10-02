@@ -1,0 +1,4 @@
+[
+  {"stable_id":"HIST-PAID-001","vendor_id":"VEND-001","invoice_reference":"DUP-001","normalized_invoice_reference":"DUP-001","invoice_date":"2025-01-15","status":"PAID","amount":"1100.00","currency":"AUD","purchase_order_id":"PO-1001","attachment_fingerprint":"sha256:paid001"},
+  {"stable_id":"HIST-PROB-001","vendor_id":"VEND-001","invoice_reference":"ABC-123","normalized_invoice_reference":"ABC-123","invoice_date":"2025-01-20","status":"POSTED","amount":"1001.00","currency":"AUD","purchase_order_id":"PO-SERVICE","attachment_fingerprint":"sha256:prob001"}
+]

@@ -50,6 +50,8 @@ Every behavioral change needs tests at the narrowest useful level. Tests must be
 - Never modify `finance_rag_corpus` source documents to make tests pass.
 - Consequential tools are deny-by-default, validated, approval-gated, and idempotent.
 - An agent may recommend but may not release payments, update bank accounts, post journals, or store bank credentials.
+- Keep tool transport failures separate from business `NOT_FOUND`; missing or unavailable evidence never passes.
+- Keep executable financial thresholds in reviewed deterministic rules with policy traceability, never runtime RAG extraction.
 
 ## LLM and RAG boundaries
 
